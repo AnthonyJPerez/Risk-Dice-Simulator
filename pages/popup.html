@@ -6,16 +6,29 @@
 	<body>
 		<div id="container">
 			<h2>Risk Dice Simulator</h2>
+			<form>
+				<!-- Attacker -->
+				<span>Attacker's armies:</span><br />
+				<input type="number" placeholder="Ex. 20" autofocus required min="1" name="attacker_armies" /><br />
+				
+				<span>Attacker die type:</span><br />
+				<input type="number" required min="1" max="100" name="attacker_die_type" value="6" /><br />
+
+				<span>Number of attacking dice:</span><br />
+				<input type="number" required min="1" max="100" name="attacker_die_count" value="3" /><br />
+
+				<!-- Defender -->
+				<span>Defender's armies:</span><br />
+				<input type="number" placeholder="Ex. 20" autofocus required min="1" name="defender_armies" /><br />
+				
+				<span>Defender die type:</span><br />
+				<input type="number" required min="1" max="100" name="defender_die_type" value="6" /><br />
+
+				<span>Number of defending dice:</span><br />
+				<input type="number" required min="1" max="100" name="defender_die_count" value="2" /><br />
+
+				<input type="submit" value="Simulate" />
+			</form>
 		</div>
 	</body>
 </html>
-
-
-
-
-
-
-
-
-
-
