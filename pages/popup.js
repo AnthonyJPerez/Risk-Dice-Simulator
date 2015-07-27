@@ -26,7 +26,7 @@ function runSimulation()
 	var json = convertFormToJson(formArray);
 	console.log("form JSON:", json);
 
-	chrome.runtime.sendMessage({"parameters":json});
+	chrome.runtime.sendMessage(json);
 
 	// Don't reset the form.
 	return false;
