@@ -117,23 +117,20 @@ function runSimulations(parameters)
 		.publish();
 
 	// Calculate the average number of times the Simulations returned with a win.
-	// A "win" in a Risk battle is when the attacker successfully take the
+	// A "win" in a Risk battle is when the attacker successfully takes the
 	// defender's country (defender reaches 0 armies).
 	//
 	// This Observable first takes each SimulationResult output by
 	// the `simulationOutcomes` observable and maps them into a 1
 	// if the attacker took the country, and a 0 otherwise. Once all
-	// SimulationResults are mapped, they are fed into the .averageDouble()
+	// SimulationResults are mapped, they are fed through the .average()
 	// Observable, which sums all of the numbers in the stream and
 	// returns the average of those numbers.
 	var averageWins = simulationOutcomes
-	    .map(stat => stat.getAttackerWon() ? 1.0 : 0.0)
-	    .average();
-
-	// Subscribe to our averageWins stream and print out the result.
-	averageWins.subscribe(
-		winAverage => _Log("Avg attacker wins: %d (%d wins)", 
-		    (winAverage * 100), (winAverage * parameters.numSimulations)));
+	    .average(stat => stat.getAttackerWon() ? 1.0 : 0.0)
+		.subscribe(
+			winAverage => _Log("Avg attacker wins: %d (%d wins)", 
+		    	(winAverage * 100), (winAverage * parameters.numSimulations)));
 
 	// Determine the average number of units that remain after successfully
 	// taking a country. 
@@ -146,30 +143,24 @@ function runSimulations(parameters)
 	// and that average returned.
 	var avgAttackerArmiesRemaining = simulationOutcomes
 		.filter(stat => stat.getAttackerWon())
-		.map(stat => stat.getAttackerArmiesPercentRemaining())
-		.average()
-		.subscribe(x => _Log("avgAttackerArmiesRemaining: %O", x));
-
-	// Subscribe to the average attacker armies remaining observable, and 
-	// print out the result.
-	//avgAttackerArmiesRemaining
-	//    .subscribe(armiesRemaining => _Log("Avg attacker armies remaining on wins: %d (%d armies)",
-	//		(100 * armiesRemaining), (armiesRemaining * initialAttackerArmies)));
+		.average(stat => stat.getAttackerArmiesPercentRemaining())
+		.subscribe(
+			armiesRemaining => _Log("Avg attacker armies remaining on wins: %d (%d armies)",
+	        	(100 * armiesRemaining), (armiesRemaining * initialAttackerArmies)),
+			() => {}, // onError, do nothing.
+			() => {}); // onComplete, do nothing.
 	
-	/*
 	// Determine the average number of units that remain after failing to
 	// take over a country. I use a similar method of calculation here as
 	// I did for the average attacker's armies.
 	var averageDefenderArmyLoss = simulationOutcomes
 		.filter(stat => !stat.getAttackerWon())
-		.map(stat => stat.getDefenderArmiesPercentRemaining())
-		.average();
-
-	// Subscribe to the average defender armies remaining observable, and 
-	// print out the result.
-	averageDefenderArmyLoss.subscribe(
-		armiesRemaining => _Log("Avg defender armies remaining on losses: %d (%d armies)",
-			(100 * armiesRemaining), (armiesRemaining * initialDefenderArmies)));*/
+		.average(stat => stat.getDefenderArmiesPercentRemaining())
+		.subscribe(
+			armiesRemaining => _Log("Avg attacker armies remaining on losses: %d (%d armies)",
+	        	(100 * armiesRemaining), (armiesRemaining * initialDefenderArmies)),
+			() => {}, // onError, do nothing.
+			() => {}); // onComplete, do nothing.
 
 	// Now that all of our subscribers are setup, start emitting the results of 
 	// the simulations.
