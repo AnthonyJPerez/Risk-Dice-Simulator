@@ -2,11 +2,18 @@
 importScripts('logger.js');
 importScripts('../dependencies/rx.all.js');
 
-var id = -1;
+var id_ = -1;
 
 // REMOVE THESE
 const initialAttackerArmies = 10; // REMOVE THIS
 const initialDefenderArmies = 8; // REMOVE THIS
+
+
+// Returns a random integer between min (included) and max (included)
+// Using Math.round() will give you a non-uniform distribution!
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 class Ruleset
 {
@@ -38,9 +45,9 @@ class Statistics
 {
 	constructor()
 	{
-		this.attackerWon = false;
-		this.attackerArmiesPercentRemaining = 0.0;
-		this.defenderArmiesPercentRemaining = 0.0;
+		this.attackerWon = (getRandomInt(0, 1)) ? true : false; // false;
+		this.attackerArmiesPercentRemaining = Math.random(); //0.0;
+		this.defenderArmiesPercentRemaining = Math.random(); //0.0;
 	}
 
 	getAttackerWon()
@@ -129,8 +136,15 @@ function runSimulations(parameters)
 	var averageWins = simulationOutcomes
 	    .average(stat => stat.getAttackerWon() ? 1.0 : 0.0)
 		.subscribe(
-			winAverage => _Log("Avg attacker wins: %d (%d wins)", 
-		    	(winAverage * 100), (winAverage * parameters.numSimulations)));
+			winAverage => {
+				var percent = 100 * winAverage;
+				var num = winAverage * parameters.numSimulations;
+				_Log("Avg attacker wins: %f%% (%d wins)",
+	        		percent, num);
+				self.postMessage({id: id_, message:"avgAttackerArmies", "percent":percent, armies:num});
+			},
+			() => {}, // onError
+			() => {}); // onComplete
 
 	// Determine the average number of units that remain after successfully
 	// taking a country. 
@@ -145,9 +159,16 @@ function runSimulations(parameters)
 		.filter(stat => stat.getAttackerWon())
 		.average(stat => stat.getAttackerArmiesPercentRemaining())
 		.subscribe(
-			armiesRemaining => _Log("Avg attacker armies remaining on wins: %d (%d armies)",
-	        	(100 * armiesRemaining), (armiesRemaining * initialAttackerArmies)),
-			() => {}, // onError, do nothing.
+			armiesRemaining => {
+				var percent = 100 * armiesRemaining;
+				var num = armiesRemaining * initialAttackerArmies;
+				_Log("Avg attacker armies remaining on wins: %f%% (%d armies)",
+	        		percent, num);
+				self.postMessage({id: id_, message:"avgAttackerArmies", "percent":percent, armies:num});
+			},
+			() => { // onError
+				self.postMessage({id: id_, message:"avgAttackerRemaining", percent:0.0, armies:0});
+			}, 
 			() => {}); // onComplete, do nothing.
 	
 	// Determine the average number of units that remain after failing to
@@ -157,9 +178,16 @@ function runSimulations(parameters)
 		.filter(stat => !stat.getAttackerWon())
 		.average(stat => stat.getDefenderArmiesPercentRemaining())
 		.subscribe(
-			armiesRemaining => _Log("Avg attacker armies remaining on losses: %d (%d armies)",
-	        	(100 * armiesRemaining), (armiesRemaining * initialDefenderArmies)),
-			() => {}, // onError, do nothing.
+			armiesRemaining => {
+				var percent = 100 * armiesRemaining;
+				var num = armiesRemaining * initialDefenderArmies;
+				_Log("Avg attacker armies remaining on losses: %f%% (%d armies)",
+	        		percent, num);
+				self.postMessage({id: id_, message:"avgDefenderRemaining", "percent":percent, armies:num});
+			},
+			() => {
+				self.postMessage({id: id_, message:"avgDefenderRemaining", percent:0.0, armies:0});
+			}, // onError, do nothing.
 			() => {}); // onComplete, do nothing.
 
 	// Now that all of our subscribers are setup, start emitting the results of 
@@ -181,17 +209,15 @@ function messageHandler (message)
 	{
 		case "setId":
 			_Log("Setting ID to %s", command.id);
-			id = command.id;
+			id_ = command.id;
 			break;
 
 		case "simulate":
 			// Send the message back
 			var parameters = command.parameters;
 			var numSimulations = parameters.numSimulations;
-			_Log("[Worker %s] Running %s simulations...", id, numSimulations);
-			var results = runSimulations(parameters);
-			_Log("[Worker %s] Generated %s results", id, results.length);
-			self.postMessage({id: id, message:results.length});
+			_Log("[Worker %s] Running %s simulations...", id_, numSimulations);
+			runSimulations(parameters);
 			break;
 	}
 	_InstrumentEnd();	
