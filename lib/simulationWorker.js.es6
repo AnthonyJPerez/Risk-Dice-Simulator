@@ -97,6 +97,18 @@ class RiskSimulation
 
 function runSimulations(parameters)
 {	
+	var resolveWinsAreCalculated, winsAreCalculated = new Promise(
+		function(resolve, reject){
+			resolveWinsAreCalculated = resolve;
+		});
+	var resolveAttackerArmiesAreCalculated, attackerArmiesAreCalculated = new Promise(
+		function(resolve, reject){
+			resolveAttackerArmiesAreCalculated = resolve;
+		});
+	var resolveDefenderArmiesAreCalculated, defenderArmiesAreCalculated = new Promise(
+		function(resolve, reject){
+			resolveDefenderArmiesAreCalculated = resolve;
+		});
 	var simulationResults = {};
 
 	var attackerRules = new Ruleset();
@@ -139,12 +151,16 @@ function runSimulations(parameters)
 			winAverage => {
 				var percent = 100 * winAverage;
 				var num = winAverage * parameters.numSimulations;
-				_Log("Avg attacker wins: %f%% (%d wins)",
-	        		percent, num);
-				self.postMessage({id: id_, message:"avgAttackerArmies", "percent":percent, armies:num});
+				_Log("[%s] Avg attacker wins: %f%% (%d wins)",
+	        		id_, percent, num);
+				self.postMessage({id: id_, message:"avgWins", "percent":percent, wins:num});
 			},
-			() => {}, // onError
-			() => {}); // onComplete
+			() => { // onError
+				self.postMessage({id: id_, message:"avgWins", "percent":0.0, wins:0});
+			},
+			() => { // onComplete
+				resolveWinsAreCalculated();
+			});
 
 	// Determine the average number of units that remain after successfully
 	// taking a country. 
@@ -162,14 +178,16 @@ function runSimulations(parameters)
 			armiesRemaining => {
 				var percent = 100 * armiesRemaining;
 				var num = armiesRemaining * initialAttackerArmies;
-				_Log("Avg attacker armies remaining on wins: %f%% (%d armies)",
-	        		percent, num);
+				_Log("[%s] Avg attacker armies remaining on wins: %f%% (%d armies)",
+	        		id_, percent, num);
 				self.postMessage({id: id_, message:"avgAttackerArmies", "percent":percent, armies:num});
 			},
 			() => { // onError
 				self.postMessage({id: id_, message:"avgAttackerRemaining", percent:0.0, armies:0});
 			}, 
-			() => {}); // onComplete, do nothing.
+			() => { // onComplete
+				resolveAttackerArmiesAreCalculated();
+			});
 	
 	// Determine the average number of units that remain after failing to
 	// take over a country. I use a similar method of calculation here as
@@ -181,22 +199,29 @@ function runSimulations(parameters)
 			armiesRemaining => {
 				var percent = 100 * armiesRemaining;
 				var num = armiesRemaining * initialDefenderArmies;
-				_Log("Avg attacker armies remaining on losses: %f%% (%d armies)",
-	        		percent, num);
+				_Log("[%s] Avg attacker armies remaining on losses: %f%% (%d armies)",
+	        		id_, percent, num);
 				self.postMessage({id: id_, message:"avgDefenderRemaining", "percent":percent, armies:num});
 			},
-			() => {
+			() => { // onError
 				self.postMessage({id: id_, message:"avgDefenderRemaining", percent:0.0, armies:0});
-			}, // onError, do nothing.
-			() => {}); // onComplete, do nothing.
+			},
+			() => { // onComplete
+				resolveDefenderArmiesAreCalculated();
+			});
 
 	// Now that all of our subscribers are setup, start emitting the results of 
 	// the simulations.
-	_Log("Running %d Simulations...", parameters.numSimulations);
-	simulationOutcomes.connect();
-	_Log("Finished running the simulations.");
+	_Log("[%s] Running %d Simulations...", id_, parameters.numSimulations);
 
-	return {message: "ack"};
+	// Begin running the simulations and emitting results
+	simulationOutcomes.connect();
+
+	return Promise.all([
+		winsAreCalculated, 
+		attackerArmiesAreCalculated, 
+		defenderArmiesAreCalculated
+	]);
 }
 
 
@@ -216,8 +241,11 @@ function messageHandler (message)
 			// Send the message back
 			var parameters = command.parameters;
 			var numSimulations = parameters.numSimulations;
-			_Log("[Worker %s] Running %s simulations...", id_, numSimulations);
-			runSimulations(parameters);
+			_Log("[%s] Running %s simulations...", id_, numSimulations);
+			runSimulations(parameters).then(() => {
+				_Log("[%s] Finished running the simulations.", id_);
+				self.postMessage({id: id_, message:"finished"});
+			});
 			break;
 	}
 	_InstrumentEnd();	
