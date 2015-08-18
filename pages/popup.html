@@ -23,13 +23,18 @@
 				<!-- Defender -->
 				<div>
 					<label>Defender's armies:</label>
-					<input type="number" placeholder="Ex. 20" autofocus required min="1" name="defender_armies" />
+					<input type="number" placeholder="Ex. 20" required min="1" name="defender_armies" />
 					
 					<label>Defender die type:</label>
 					<input type="number" required min="1" max="100" name="defender_die_type" value="6" />
 
 					<label>Number of defending dice:</label>
 					<input type="number" required min="1" max="100" name="defender_die_count" value="2" />
+				</div>
+
+				<div>
+					<label>Number of Simulations to run:</label>
+					<input type="number" required min="1" max="100000" name="total_simulation_count" value="10000" />
 				</div>
 
 				<input id="simulate" type="button" value="Simulate"/>
